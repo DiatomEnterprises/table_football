@@ -8,33 +8,42 @@ defmodule TableFootball.EventBusTest do
   end
 
   test "subscribe to ping and notify about ping" do
-    EventBus.subscribe(:ping)
+    EventBus.subscribe(self, :ping)
     EventBus.notify(:ping, :ok)
-    assert_receive(:ok)
+    assert_receive({:ping, :ok})
   end
 
-  test "subscribe to two events" do
-    EventBus.subscribe(:ping)
+  test "subscribe to ping and notify about ping and pong" do
+    EventBus.subscribe(self, :ping)
     EventBus.notify(:ping, :ping)
     EventBus.notify(:pong, :pong)
-    assert_receive(:ping)
-    refute_receive(:pong)
+    assert_receive({:ping, :ping})
+    refute_receive({:pong, :pong})
   end
 
-  test "subscribe two times to single action" do
-    EventBus.subscribe(:ping)
-    EventBus.subscribe(:ping)
+  test "subscribe to ping and pong and notify about ping and pong" do
+    EventBus.subscribe(self, :ping)
+    EventBus.subscribe(self, :pong)
     EventBus.notify(:ping, :ping)
-    assert_receive(:ping)
-    refute_receive(:ping)
+    EventBus.notify(:pong, :pong)
+    assert_receive({:ping, :ping})
+    assert_receive({:pong, :pong})
+  end
+
+  test "subscribe two times to single event" do
+    EventBus.subscribe(self, :ping)
+    EventBus.subscribe(self, :ping)
+    EventBus.notify(:ping, :ping)
+    assert_receive({:ping, :ping})
+    refute_receive({:ping, :ping})
   end
 
   test "unsubscribe" do
-    EventBus.subscribe(:ping)
+    EventBus.subscribe(self, :ping)
     EventBus.notify(:ping, :ping)
-    assert_receive(:ping)
-    EventBus.unsubscribe(:ping)
+    assert_receive({:ping, :ping})
+    EventBus.unsubscribe(self, :ping)
     EventBus.notify(:ping, :ping)
-    refute_receive(:ping)
+    refute_receive({:ping, :ping})
   end
 end

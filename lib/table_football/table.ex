@@ -1,47 +1,47 @@
 defmodule TableFootball.Table do
-  use GenServer
+  alias TableFootball.EventBus
+  alias TableFootball.GameLogic
 
-  def start_link do
-    options = %{left_player_id: nil, right_player_id: nil, game_pid: nil, subscribers: []}
-    GenServer.start(__MODULE__, options, name: __MODULE__)
+  def start_link() do
+    pid = spawn_link(__MODULE__, :start_table, [%{game_pid: nil, left_player_id: nil, right_player_id: nil}])
+    EventBus.subscribe(pid, :player_join)
+    pid
   end
 
-  def register_player(id) do
-    GenServer.cast(__MODULE__, {:register_player, id})
+  def start_table(game) do
+    listen(game)
   end
 
-  def handle_cast({:register_player, id}, %{game_pid: game_pid} = state) when is_pid(game_pid) do
-    {:noreply, state}
+  defp listen(game) do
+    new_game_state = receive do
+      {:player_join, player_id} ->
+        handle_game_state(game, player_id)
+      {:victory, :ok} -> handle_victory(game)
+    end
+    listen(new_game_state)
   end
 
-  def handle_cast({:register_player, id}, %{left_player_id: nil, game_pid: nil} = state) do
-    new_state = add_left_player(state, id)
-    {:noreply, new_state}
+  defp handle_victory(_game) do
+    %{game_pid: nil, left_player_id: nil, right_player_id: nil}
   end
 
-  def handle_cast({:register_player, id}, %{left_player_id: id, game_pid: nil} = state) do
-    {:noreply, state}
+  defp handle_game_state(%{game_pid: game_pid} = game, _player_id) when is_pid(game_pid) do
+    game
   end
 
-  def handle_cast({:register_player, id}, %{right_player_id: nil, game_pid: nil} = state) do
-    new_state = add_right_player_and_spawn_game(state, id)
-    {:noreply, new_state}
+  defp handle_game_state(%{left_player_id: nil} = game, player_id) do
+    %{game | left_player_id: player_id}
   end
 
-  defp add_left_player(state, id) do
-    Dict.merge(state, %{left_player_id: id})
+  defp handle_game_state(%{left_player_id: id, right_player_id: id} = game, _player_id) do
+    game
   end
 
-  defp add_right_player_and_spawn_game(state = %{left_player_id: left_player_id}, id) do
-    {:ok, game_pid} = TableFootball.GameLogic.start_link(left_player_id: left_player_id, right_player_id: id)
-    Dict.merge(state, %{right_player_id: id, game_pid: game_pid})
-  end
-
-  def get_state do
-    GenServer.call(__MODULE__, {:get_state})
-  end
-
-  def handle_call({:get_state}, _from, state) do
-    {:reply, state, state}
+  defp handle_game_state(%{left_player_id: left_player_id, right_player_id: nil} = game, right_player_id) do
+    %{game | right_player_id: right_player_id}
+    game_pid = GameLogic.start_link(left_player_id: left_player_id, right_player_id: right_player_id)
+    EventBus.notify(:game_started, :ok)
+    %{game | game_pid: game_pid}
   end
 end
+

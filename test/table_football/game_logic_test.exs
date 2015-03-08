@@ -1,32 +1,24 @@
 defmodule TableFootball.GameLogicTest do
-  use ExUnit.Case, async: true
-  require TableFootball.Game
-
-  test "checking result with Left 2 : Right 1" do
-    {:ok, game_logic_pid} = TableFootball.GameLogic.start_link(left_player_id: 1, right_player_id: 2)
-
-    {:ok, game_score} = {:ok, TableFootball.GameLogic.add_score(game_logic_pid, :left)}
-    assert(game_score == %TableFootball.Game{left_player_id: 1, right_player_id: 2, left_score: 1, right_score: 0})
-    {:ok, game_score} = {:ok, TableFootball.GameLogic.add_score(game_logic_pid, :right)}
-    assert(game_score == %TableFootball.Game{left_player_id: 1, right_player_id: 2, left_score: 1, right_score: 1})
-    {:ok, game_score} = {:ok, TableFootball.GameLogic.add_score(game_logic_pid, :left)}
-    assert(game_score == %TableFootball.Game{left_player_id: 1, right_player_id: 2, left_score: 2, right_score: 1})
+  use ExUnit.Case
+  alias TableFootball.Game
+  alias TableFootball.GameLogic
+  alias TableFootball.EventBus
+  setup do
+    EventBus.start_link
+    :ok
   end
 
-  test "checking result with Left 1 : Right 2" do
-    {:ok, game_logic_pid} = TableFootball.GameLogic.start_link(left_player_id: 1, right_player_id: 2)
-
-    {:ok, game_score} = {:ok, TableFootball.GameLogic.add_score(game_logic_pid, :right)}
-    assert(game_score == %TableFootball.Game{left_player_id: 1, right_player_id: 2, left_score: 0, right_score: 1})
-    {:ok, game_score} = {:ok, TableFootball.GameLogic.add_score(game_logic_pid, :right)}
-    assert(game_score == %TableFootball.Game{left_player_id: 1, right_player_id: 2, left_score: 0, right_score: 2})
-    {:ok, game_score} = {:ok, TableFootball.GameLogic.add_score(game_logic_pid, :left)}
-    assert(game_score == %TableFootball.Game{left_player_id: 1, right_player_id: 2, left_score: 1, right_score: 2})
-  end
-
-  test "stopping of games" do
-    {:ok, game_logic_pid} = TableFootball.GameLogic.start_link(left_player_id: 1, right_player_id: 2)
-    {:ok, "Game process terminated"} = TableFootball.GameLogic.stop_game(game_logic_pid)
-    assert(Process.alive?(game_logic_pid) == false)
+  test "checking if left player has won" do
+    game_pid = GameLogic.start_link(left_player_id: 1, right_player_id: 2)
+    EventBus.subscribe(self, :victory)
+    EventBus.subscribe(self, :game_update)
+    Enum.each(1..5, fn(_)-> EventBus.notify(:score, :left) end)
+    Enum.each(1..5, fn(i)-> assert_receive({ :game_update, %Game{ left_score: ^i}}) end)
+    Enum.each(1..5, fn(_)-> EventBus.notify(:score, :right) end)
+    Enum.each(1..5, fn(i)-> assert_receive({ :game_update, %Game{ right_score: ^i}}) end)
+    Enum.each(6..10, fn(_)-> EventBus.notify(:score, :left) end)
+    Enum.each(6..9, fn(i)-> assert_receive({ :game_update, %Game{ left_score: ^i}}) end)
+    assert_receive({:victory, %Game{left_player_id: 1, right_player_id: 2, left_score: 10, right_score: 5}})
+    refute(Process.alive?(game_pid))
   end
 end

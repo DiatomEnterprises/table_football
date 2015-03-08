@@ -1,37 +1,48 @@
 defmodule TableFootball.GameLogic do
   use GenServer
+  alias TableFootball.Game
+  alias TableFootball.EventBus
 
   def start_link(left_player_id: left_player_id, right_player_id: right_player_id) do
-    game_state = %TableFootball.Game{
+    game_state = %Game{
       left_player_id: left_player_id,
       right_player_id: right_player_id,
       left_score: 0,
       right_score: 0
     }
-    GenServer.start(__MODULE__, game_state)
+    spawn(__MODULE__, :start_game, [game_state])
   end
 
-  def add_score(pid, side) do
-    {:ok, game_state} = GenServer.call pid, {:point, side}
-    game_state
+  def start_game(game_state) do
+    EventBus.subscribe(self, :score)
+    listen(game_state)
   end
 
-  def handle_call({:point, :right}, _from, game_state) do
-    new_game_state = %{game_state | right_score: game_state.right_score + 1}
-    {:reply, {:ok, new_game_state}, new_game_state}
+  def listen(game_state) do
+    new_game_state = receive do
+      {:score, :right} -> %{game_state | right_score: game_state.right_score + 1}
+      {:score, :left} -> %{game_state | left_score: game_state.left_score + 1}
+    end
+    case handle_logic(new_game_state) do
+      :ok -> listen(new_game_state)
+      :victory -> nil
+    end
   end
 
-  def handle_call({:point, :left}, _from, game_state) do
-    new_game_state = %{game_state | left_score: game_state.left_score + 1}
-    {:reply, {:ok, new_game_state}, new_game_state}
+  def handle_logic(%Game{right_score: 10} = game) do
+    EventBus.notify(:victory, game)
+    EventBus.unsubscribe(self, :score)
+    :victory
   end
 
-  def stop_game(pid) do
-    GenServer.call pid, {:stop_game}
-    {:ok, "Game process terminated"}
+  def handle_logic(%Game{left_score: 10} = game) do
+    EventBus.notify(:victory, game)
+    EventBus.unsubscribe(self, :score)
+    :victory
   end
 
-  def handle_call({:stop_game}, _from,  game_state) do
-    {:stop, :normal, :ok, game_state}
+  def handle_logic(game) do
+    EventBus.notify(:game_update, game)
+    :ok
   end
 end

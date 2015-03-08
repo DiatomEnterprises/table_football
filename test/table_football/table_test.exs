@@ -1,20 +1,21 @@
 defmodule TableFootball.TableTest do
   use ExUnit.Case, async: true
+  alias TableFootball.EventBus
+  alias TableFootball.Table
 
-  test "add player to table" do
-    TableFootball.Table.start_link
-    TableFootball.Table.register_player(123)
-    TableFootball.Table.register_player(321)
-    TableFootball.Table.register_player(111)
-    %{left_player_id: lp_id, right_player_id: rp_id, game_pid: pid} = TableFootball.Table.get_state
-    assert lp_id == 123
-    assert rp_id == 321
-    assert Process.alive?(pid)
+  setup do
+    EventBus.start_link
+    :ok
   end
 
-  test "add subscriber for goal" do
-    TableFootball.Table.start_link
-    TableFootball.Table.register_player(123)
-    TableFootball.Table.register_player(321)
+  test "add two players to the table" do
+    Table.start_link
+    EventBus.subscribe(self, :game_started)
+    EventBus.subscribe(self, :victory)
+    EventBus.notify(:player_join, 123)
+    EventBus.notify(:player_join, 321)
+    Enum.each(1..10, fn (_) ->EventBus.notify(:score, :left)end)
+    assert_receive({:game_started, :ok})
+    assert_receive({:victory, game})
   end
 end
