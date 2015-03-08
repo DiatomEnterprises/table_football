@@ -1,5 +1,10 @@
 defmodule TableFootball.EventBus do
   use GenServer
+  use Application
+
+  def start(_,_) do
+    start_link
+  end
 
   def start_link do
     GenServer.start(__MODULE__, HashDict.new, name: __MODULE__)
