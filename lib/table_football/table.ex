@@ -3,12 +3,11 @@ defmodule TableFootball.Table do
   alias TableFootball.GameLogic
 
   def start_link() do
-    pid = spawn_link(__MODULE__, :start_table, [%{game_pid: nil, left_player_id: nil, right_player_id: nil}])
-    EventBus.subscribe(pid, :player_join)
-    pid
+    spawn_link(__MODULE__, :start_table, [%{game_pid: nil, left_player_id: nil, right_player_id: nil}])
   end
 
   def start_table(game) do
+    EventBus.subscribe(self, :player_join)
     listen(game)
   end
 
