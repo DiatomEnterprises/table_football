@@ -11,6 +11,11 @@ defmodule TableFootball.GameLogic do
     GenServer.start(__MODULE__, game_state)
   end
 
+  def add_score(pid, side) do
+    {:ok, game_state} = GenServer.call pid, {:point, side}
+    game_state
+  end
+
   def handle_call({:point, :right}, _from, game_state) do
     new_game_state = %{game_state | right_score: game_state.right_score + 1}
     {:reply, {:ok, new_game_state}, new_game_state}
@@ -21,17 +26,12 @@ defmodule TableFootball.GameLogic do
     {:reply, {:ok, new_game_state}, new_game_state}
   end
 
-  def add_score(pid, side) do
-    {:ok, game_state} = GenServer.call pid, {:point, side}
-    game_state
+  def stop_game(pid) do
+    GenServer.call pid, {:stop_game}
+    {:ok, "Game process terminated"}
   end
 
   def handle_call({:stop_game}, _from,  game_state) do
     {:stop, :normal, :ok, game_state}
-  end
-
-  def stop_game(pid) do
-    GenServer.call pid, {:stop_game}
-    {:ok, "Game process terminated"}
   end
 end

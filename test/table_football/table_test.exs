@@ -13,6 +13,8 @@ defmodule TableFootball.TableTest do
   end
 
   test "add subscriber for goal" do
-
+    TableFootball.Table.start_link
+    TableFootball.Table.register_player(123)
+    TableFootball.Table.register_player(321)
   end
 end

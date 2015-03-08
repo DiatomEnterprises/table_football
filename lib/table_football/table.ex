@@ -2,7 +2,7 @@ defmodule TableFootball.Table do
   use GenServer
 
   def start_link do
-    options = %{left_player_id: nil, right_player_id: nil, game_pid: nil}
+    options = %{left_player_id: nil, right_player_id: nil, game_pid: nil, subscribers: []}
     GenServer.start(__MODULE__, options, name: __MODULE__)
   end
 
@@ -28,11 +28,11 @@ defmodule TableFootball.Table do
     {:noreply, new_state}
   end
 
-  def add_left_player(state, id) do
+  defp add_left_player(state, id) do
     Dict.merge(state, %{left_player_id: id})
   end
 
-  def add_right_player_and_spawn_game(state = %{left_player_id: left_player_id}, id) do
+  defp add_right_player_and_spawn_game(state = %{left_player_id: left_player_id}, id) do
     {:ok, game_pid} = TableFootball.GameLogic.start_link(left_player_id: left_player_id, right_player_id: id)
     Dict.merge(state, %{right_player_id: id, game_pid: game_pid})
   end
@@ -44,5 +44,4 @@ defmodule TableFootball.Table do
   def handle_call({:get_state}, _from, state) do
     {:reply, state, state}
   end
-
 end
