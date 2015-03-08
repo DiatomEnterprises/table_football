@@ -25,20 +25,18 @@ defmodule TableFootball.GameLogic do
     end
     case handle_logic(new_game_state) do
       :ok -> listen(new_game_state)
-      :victory -> nil
+      {:victory, game} ->
+        EventBus.notify(:victory, game)
+        EventBus.unsubscribe(self, :score)
     end
   end
 
   def handle_logic(%Game{right_score: 10} = game) do
-    EventBus.notify(:victory, game)
-    EventBus.unsubscribe(self, :score)
-    :victory
+    {:victory, game}
   end
 
   def handle_logic(%Game{left_score: 10} = game) do
-    EventBus.notify(:victory, game)
-    EventBus.unsubscribe(self, :score)
-    :victory
+    {:victory, game}
   end
 
   def handle_logic(game) do

@@ -9,7 +9,7 @@ defmodule TableFootball.GameLogicTest do
   end
 
   test "checking if left player has won" do
-    game_pid = GameLogic.start_link(left_player_id: 1, right_player_id: 2)
+    GameLogic.start_link(left_player_id: 1, right_player_id: 2)
     EventBus.subscribe(self, :victory)
     EventBus.subscribe(self, :game_update)
     Enum.each(1..5, fn(_)-> EventBus.notify(:score, :left) end)
@@ -19,6 +19,5 @@ defmodule TableFootball.GameLogicTest do
     Enum.each(6..10, fn(_)-> EventBus.notify(:score, :left) end)
     Enum.each(6..9, fn(i)-> assert_receive({ :game_update, %Game{ left_score: ^i}}) end)
     assert_receive({:victory, %Game{left_player_id: 1, right_player_id: 2, left_score: 10, right_score: 5}})
-    refute(Process.alive?(game_pid))
   end
 end

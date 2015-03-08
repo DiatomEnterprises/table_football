@@ -16,6 +16,6 @@ defmodule TableFootball.TableTest do
     EventBus.notify(:player_join, 321)
     Enum.each(1..10, fn (_) ->EventBus.notify(:score, :left)end)
     assert_receive({:game_started, :ok})
-    assert_receive({:victory, game})
+    assert_receive({:victory, _game})
   end
 end
