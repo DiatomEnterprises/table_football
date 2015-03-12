@@ -1,15 +1,8 @@
 defmodule TableFootball.TableTest do
   use ExUnit.Case, async: true
   alias TableFootball.EventBus
-  alias TableFootball.Table
-
-  setup do
-    EventBus.start_link
-    :ok
-  end
 
   test "add two players to the table" do
-    Table.start_link
     EventBus.subscribe(self, :game_started)
     EventBus.subscribe(self, :victory)
     EventBus.notify(:player_join, 123)

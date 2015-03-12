@@ -14,16 +14,13 @@ defmodule TableFootball.EventBus do
     GenServer.call(__MODULE__, {:subscribe, event, pid})
   end
 
-
   def notify(event, data) do
     GenServer.call(__MODULE__, {:notify, event, data})
   end
 
-
   def unsubscribe(pid, event) do
     GenServer.call(__MODULE__, {:unsubscribe, event, pid})
   end
-
 
   def handle_call({:subscribe, event, pid}, _from, state) do
     new_state = add_subscriber_to_event(state, pid, event)

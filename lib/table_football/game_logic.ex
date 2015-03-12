@@ -10,37 +10,37 @@ defmodule TableFootball.GameLogic do
       left_score: 0,
       right_score: 0
     }
-    spawn(__MODULE__, :start_game, [game_state])
+    GenServer.start_link(__MODULE__, game_state)
   end
 
-  def start_game(game_state) do
+  def init(game_state) do
     EventBus.subscribe(self, :score)
-    listen(game_state)
+    {:ok, game_state}
   end
 
-  def listen(game_state) do
-    new_game_state = receive do
-      {:score, :right} -> %{game_state | right_score: game_state.right_score + 1}
-      {:score, :left} -> %{game_state | left_score: game_state.left_score + 1}
-    end
-    case handle_logic(new_game_state) do
-      :ok -> listen(new_game_state)
-      {:victory, game} ->
-        EventBus.notify(:victory, game)
-        EventBus.unsubscribe(self, :score)
-    end
+  def handle_info({:score, :right}, %Game{right_score: 9} = game_state) do
+    new_game_state = %{game_state | right_score: game_state.right_score + 1}
+    EventBus.notify(:victory, new_game_state)
+    EventBus.unsubscribe(self, :score)
+    {:stop, :normal, new_game_state}
   end
 
-  def handle_logic(%Game{right_score: 10} = game) do
-    {:victory, game}
+  def handle_info({:score, :left}, %Game{left_score: 9} = game_state) do
+    new_game_state = %{game_state | left_score: game_state.left_score + 1}
+    EventBus.notify(:victory, new_game_state)
+    EventBus.unsubscribe(self, :score)
+    {:stop, :normal, new_game_state}
   end
 
-  def handle_logic(%Game{left_score: 10} = game) do
-    {:victory, game}
+  def handle_info({:score, :right}, game_state) do
+    new_game_state = %{game_state | right_score: game_state.right_score + 1}
+    EventBus.notify(:game_update, new_game_state)
+    {:noreply, new_game_state}
   end
 
-  def handle_logic(game) do
-    EventBus.notify(:game_update, game)
-    :ok
+  def handle_info({:score, :left}, game_state) do
+    new_game_state = %{game_state | left_score: game_state.left_score + 1}
+    EventBus.notify(:game_update, new_game_state)
+    {:noreply, new_game_state}
   end
 end

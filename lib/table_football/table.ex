@@ -2,33 +2,24 @@ defmodule TableFootball.Table do
   alias TableFootball.EventBus
   alias TableFootball.GameLogic
   use Application
+  use GenServer
 
   def start(_,_) do
     start_link
   end
 
-  def start_link() do
-    EventBus.start_link
-    pid = spawn_link(__MODULE__, :start_table, [%{game_pid: nil, left_player_id: nil, right_player_id: nil}])
-    {:ok, pid}
+  def start_link do
+    GenServer.start_link(__MODULE__, %{game_pid: nil, left_player_id: nil, right_player_id: nil}, name: __MODULE__)
   end
 
-  def start_table(game) do
+  def init(game_state) do
+    EventBus.start_link
     EventBus.subscribe(self, :player_join)
     EventBus.subscribe(self, :victory)
-    listen(game)
+    {:ok, game_state}
   end
 
-  defp listen(game) do
-    new_game_state = receive do
-      {:player_join, player_id} ->
-        handle_game_state(game, player_id)
-      {:victory, :ok} -> handle_victory(game)
-    end
-    listen(new_game_state)
-  end
-
-  defp handle_victory(_game) do
+  defp handle_victory do
     %{game_pid: nil, left_player_id: nil, right_player_id: nil}
   end
 
@@ -49,6 +40,14 @@ defmodule TableFootball.Table do
     game_pid = GameLogic.start_link(left_player_id: left_player_id, right_player_id: right_player_id)
     EventBus.notify(:game_started, :ok)
     %{game | game_pid: game_pid}
+  end
+
+  def handle_info({:player_join, player_id}, state) do
+    {:noreply, handle_game_state(state, player_id)}
+  end
+
+  def handle_info({:victory, _game}, _state) do
+    {:noreply, handle_victory}
   end
 end
 
